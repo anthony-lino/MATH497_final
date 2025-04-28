@@ -10,23 +10,23 @@ import random
 import tensorflow as tf
 import os
 
-# 1. 设置随机种子确保可复现性
+# 1. Set random seeds for reproducibility
 random.seed(42)
 np.random.seed(42)
 tf.random.set_seed(42)
 os.environ['PYTHONHASHSEED'] = str(42)
 
-# 2. 定义运行实验的函数
+# 2. Define the function to run the experiment
 def run_experiment(data_file, results_folder):
-    # 读入数据
+    # Load the data
     df = pd.read_csv(data_file)
     data = df[['open', 'high', 'low', 'close']].values
 
-    # 归一化
+    # Normalize the data
     scaler = MinMaxScaler()
     data = scaler.fit_transform(data)
 
-    # 创建时间序列
+    # Create time sequences
     def create_sequences(data, seq_length):
         X, y = [], []
         for i in range(len(data) - seq_length):
@@ -37,7 +37,7 @@ def run_experiment(data_file, results_folder):
     seq_length = 60
     X, y = create_sequences(data, seq_length)
 
-    # 划分 75%训练集, 20%验证集, 5%测试集
+    # Split into 75% training, 20% validation, 5% testing
     total_samples = len(X)
     train_size = int(0.75 * total_samples)
     val_size = int(0.20 * total_samples)
@@ -46,15 +46,15 @@ def run_experiment(data_file, results_folder):
     X_val, y_val = X[train_size:train_size+val_size], y[train_size:train_size+val_size]
     X_test, y_test = X[train_size+val_size:], y[train_size+val_size:]
 
-    # 建立LSTM模型
+    # Build the LSTM model
     model = Sequential([
-    LSTM(64, return_sequences=False, input_shape=(seq_length, 4)),
-    Dense(4)
+        LSTM(64, return_sequences=False, input_shape=(seq_length, 4)),
+        Dense(4)
     ])
 
     model.compile(optimizer='adam', loss='mse')
 
-    # 训练模型
+    # Train the model
     history = model.fit(
         X_train, y_train,
         epochs=1000,
@@ -62,7 +62,7 @@ def run_experiment(data_file, results_folder):
         validation_data=(X_val, y_val)
     )
 
-    # 预测结果
+    # Predict results
     y_train_pred = model.predict(X_train)
     y_train_pred_original = scaler.inverse_transform(y_train_pred)
     y_train_original = scaler.inverse_transform(y_train)
@@ -75,7 +75,7 @@ def run_experiment(data_file, results_folder):
     y_test_pred_original = scaler.inverse_transform(y_test_pred)
     y_test_original = scaler.inverse_transform(y_test)
 
-    # 保存预测结果
+    # Save prediction results
     train_df = pd.DataFrame(np.hstack([y_train_original, y_train_pred_original]), columns=['True_Open', 'True_High', 'True_Low', 'True_Close', 'Predicted_Open', 'Predicted_High', 'Predicted_Low', 'Predicted_Close'])
     val_df = pd.DataFrame(np.hstack([y_val_original, y_val_pred_original]), columns=['True_Open', 'True_High', 'True_Low', 'True_Close', 'Predicted_Open', 'Predicted_High', 'Predicted_Low', 'Predicted_Close'])
     test_df = pd.DataFrame(np.hstack([y_test_original, y_test_pred_original]), columns=['True_Open', 'True_High', 'True_Low', 'True_Close', 'Predicted_Open', 'Predicted_High', 'Predicted_Low', 'Predicted_Close'])
@@ -84,7 +84,7 @@ def run_experiment(data_file, results_folder):
     val_df.to_csv(f'{results_folder}/val_predictions.csv', index=False)
     test_df.to_csv(f'{results_folder}/test_predictions.csv', index=False)
 
-    # 计算评估指标
+    # Calculate evaluation metrics
     def calculate_metrics(y_true, y_pred):
         mae = mean_absolute_error(y_true, y_pred)
         mse = mean_squared_error(y_true, y_pred)
@@ -96,13 +96,13 @@ def run_experiment(data_file, results_folder):
     val_mae, val_mse, val_rmse, val_r2 = calculate_metrics(y_val_original, y_val_pred_original)
     test_mae, test_mse, test_rmse, test_r2 = calculate_metrics(y_test_original, y_test_pred_original)
 
-    # 保存评估指标到文本文件
+    # Save metrics to a text file
     with open(f'{results_folder}/metrics.txt', 'w') as f:
         f.write(f"Train Metrics - MAE: {train_mae}, MSE: {train_mse}, RMSE: {train_rmse}, R2: {train_r2}\n")
         f.write(f"Validation Metrics - MAE: {val_mae}, MSE: {val_mse}, RMSE: {val_rmse}, R2: {val_r2}\n")
         f.write(f"Test Metrics - MAE: {test_mae}, MSE: {test_mse}, RMSE: {test_rmse}, R2: {test_r2}\n")
 
-    # 绘制四宫格图
+    # Plot 4-panel prediction figures
     def plot_predictions(y_true, y_pred, title, save_path):
         fig, axs = plt.subplots(2, 2, figsize=(15, 10))
         labels = ['Open Price', 'High Price', 'Low Price', 'Close Price']
@@ -119,9 +119,9 @@ def run_experiment(data_file, results_folder):
     plot_predictions(y_val_original, y_val_pred_original, 'Validation', f'{results_folder}/val_predictions.png')
     plot_predictions(y_test_original, y_test_pred_original, 'Test', f'{results_folder}/test_predictions.png')
 
-# 3. 运行实验 for different datasets
+# 3. Run the experiment for different datasets
 datasets = ['USD_CNY_5_years.csv', 'USD_EUR_5_years.csv', 'USD_JPY_5_years.csv']
 for dataset in datasets:
-    results_folder = f'Results_LSTM/{dataset.split(".")[0]}'  # 创建不同的文件夹保存结果
+    results_folder = f'Results_LSTM/{dataset.split(".")[0]}'  # Create a different folder to save results
     os.makedirs(results_folder, exist_ok=True)
     run_experiment(dataset, results_folder)
