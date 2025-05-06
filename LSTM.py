@@ -57,7 +57,7 @@ def run_experiment(data_file, results_folder):
     # Train the model
     history = model.fit(
         X_train, y_train,
-        epochs=1000,
+        epochs=100,
         batch_size=32,
         validation_data=(X_val, y_val)
     )
@@ -120,7 +120,8 @@ def run_experiment(data_file, results_folder):
     plot_predictions(y_test_original, y_test_pred_original, 'Test', f'{results_folder}/test_predictions.png')
 
 # 3. Run the experiment for different datasets
-datasets = ['USD_CNY_5_years.csv', 'USD_EUR_5_years.csv', 'USD_JPY_5_years.csv']
+# datasets = ['USD_CNY_5_years.csv', 'USD_EUR_5_years.csv', 'USD_JPY_5_years.csv']
+datasets = ['USD_JPY_5_years2.csv']
 for dataset in datasets:
     results_folder = f'Results_LSTM/{dataset.split(".")[0]}'  # Create a different folder to save results
     os.makedirs(results_folder, exist_ok=True)
