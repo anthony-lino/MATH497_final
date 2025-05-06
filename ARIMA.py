@@ -5,6 +5,7 @@ from statsmodels.tsa.arima.model import ARIMA
 from itertools import product
 from sklearn.metrics import mean_squared_error
 import warnings
+import joblib
 
 warnings.filterwarnings("ignore")  # To suppress convergence warnings
 
@@ -12,32 +13,45 @@ warnings.filterwarnings("ignore")  # To suppress convergence warnings
 df = pd.read_csv("USD_CNY_5_years.csv", parse_dates=['date'], index_col='date')
 series = df['close']  # Select your univariate time series
 
-# Split into train/test
-train_size = int(len(series) * 0.8)
-train, test = series[:train_size], series[train_size:]
-
 # Define parameter ranges
 p_values = range(1, 11)
 d_values = range(0, 3)
 q_values = range(1, 11)
 
-best_score = float('inf')
-best_order = None
+results = []
+best_aic = float("inf")
+best_bic = float("inf")
+best_aic_order = None
+best_bic_order = None
 
-# Grid search
 for p, d, q in product(p_values, d_values, q_values):
     try:
-        model = ARIMA(train, order=(p, d, q))
+        model = ARIMA(series, order=(p, d, q))
         model_fit = model.fit()
-        forecast = model_fit.forecast(steps=len(test))
-        mse = mean_squared_error(test, forecast)
 
-        if mse < best_score:
-            best_score = mse
-            best_order = (p, d, q)
+        aic = model_fit.aic
+        bic = model_fit.bic
 
-    except Exception:
+        results.append({'p': p, 'd': d, 'q': q, 'aic': aic, 'bic': bic})
+
+        if aic < best_aic:
+            best_aic = aic
+            best_aic_order = (p, d, q)
+            print("New best AIC:", best_aic, "with parameters:", best_aic_order)
+        else:
+            print("Parameters:", (p, d, q), "with AIC:", aic)
+
+        if bic < best_bic:
+            best_bic = bic
+            best_bic_order = (p, d, q)
+    except Exception as e:
+        results.append({'p': p, 'd': d, 'q': q, 'aic': None, 'bic': None})
+        print("Failed to fit model:", (p, d, q), "Error:", e)
         continue
 
-print(f"Best ARIMA order: {best_order}")
-print(f"Best MSE on test set: {best_score}")
+# Save to CSV
+results_df = pd.DataFrame(results)
+results_df.to_csv("arima_grid_search_results_info_criterion.csv", index=False)
+
+print(f"Best ARIMA order by AIC: {best_aic_order} with AIC: {best_aic}")
+print(f"Best ARIMA order by BIC: {best_bic_order} with BIC: {best_bic}")
